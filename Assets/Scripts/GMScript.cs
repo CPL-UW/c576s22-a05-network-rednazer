@@ -11,8 +11,7 @@ using static Netris;
 
 // ReSharper disable once InconsistentNaming
 [SuppressMessage("ReSharper", "InconsistentNaming")]
-public class GMScript : NetworkBehaviour
-{
+public class GMScript : NetworkBehaviour {
     public TileBase pieceTile;
     public TileBase emptyTile;
     public TileBase chunkTile;
@@ -21,16 +20,16 @@ public class GMScript : NetworkBehaviour
     public TMP_Text infoText;
     public TMP_Text dashText;
     public bool DEBUG_MODE;
-    
+
     private int _difficulty;
     private int _fixedUpdateCount;
     private int _fixedUpdateFramesToWait = 10;
     private int _inARow;
     private bool _initialized;
     private int _score;
-    
-    private RectInt _hBounds = new(BOUNDS_MAX, BOUNDS_MAX, -BOUNDS_MAX, -BOUNDS_MAX);
-    private RectInt _eBounds = new(BOUNDS_MAX, BOUNDS_MAX, -BOUNDS_MAX, -BOUNDS_MAX);
+
+    private RectInt _hBounds = new (BOUNDS_MAX, BOUNDS_MAX, - BOUNDS_MAX, -BOUNDS_MAX);
+    private RectInt _eBounds = new (BOUNDS_MAX, BOUNDS_MAX, - BOUNDS_MAX, -BOUNDS_MAX);
     
     private Vector3Int[] _myChunk;
     private Vector3Int[] _myPiece;
@@ -38,7 +37,14 @@ public class GMScript : NetworkBehaviour
     private Vector3Int[] _enemyPiece;
 
     private bool _networkStarted;
-    private bool _networkRegistered;
+    [SerializeField] private bool _networkRegistered;
+
+    // The strings for the chatbox
+    public String myString;
+    private bool messageDirty = false;
+
+    public GameObject userText;
+    public GameObject sentText;
 
     public GMScript()
     {
@@ -89,6 +95,7 @@ public class GMScript : NetworkBehaviour
 
     private const string MSG_TYPE_CHUNK = "CHUNK";
     private const string MSG_TYPE_PIECE = "PIECE";
+    private const string MSG_TYPE_MSG = "MSG";
 
     private void SendChunkMessage()
     {
@@ -100,6 +107,15 @@ public class GMScript : NetworkBehaviour
         SendMessageToAll(MSG_TYPE_PIECE,v2s(_myPiece));
     }
 
+    // Sends a message that is the message currently on the message board
+    private void SendMsgMessage() {
+        if (messageDirty) {
+            myString = userText.GetComponent<TextMeshProUGUI>().text;
+            SendMessageToAll(MSG_TYPE_MSG, myString);
+            messageDirty = false;
+        }
+    }
+
     void DoNetworkUpdate()
     {
         if (!_networkStarted) return;
@@ -107,16 +123,18 @@ public class GMScript : NetworkBehaviour
         {
             NetworkManager.Singleton.CustomMessagingManager.RegisterNamedMessageHandler(MSG_TYPE_CHUNK, ReceiveChunkMessage);
             NetworkManager.Singleton.CustomMessagingManager.RegisterNamedMessageHandler(MSG_TYPE_PIECE, ReceivePieceMessage);
+            NetworkManager.Singleton.CustomMessagingManager.RegisterNamedMessageHandler(MSG_TYPE_MSG, RecieveMsgMessage);
             _networkRegistered = true;
             return;
         }
         SendChunkMessage();
         SendPieceMessage();
+        SendMsgMessage();
     }
 
     private void ReceivePieceMessage(ulong senderID, FastBufferReader reader)
     {
-        Dirty = true;
+        Dirty = true; 
         reader.ReadValueSafe(out var message);
         _enemyPiece = SwitchBounds(s2v(message),_hBounds,_eBounds);
     }
@@ -128,8 +146,28 @@ public class GMScript : NetworkBehaviour
         _enemyChunk = SwitchBounds(s2v(message),_hBounds,_eBounds);
     }
     
-    
-    
+    private void RecieveMsgMessage(ulong senderID, FastBufferReader reader) {
+        Dirty = true;
+        reader.ReadValueSafe(out var message);
+
+        Debug.Log(message);
+        // Set opponent's text box to the sent string
+        sentText.GetComponent<TextMeshProUGUI>().text = message;
+    }
+
+    private bool typing = false;
+    public void setTyping() {
+        if(typing) {
+            typing = false;
+        } else {
+            typing = true;
+        }
+    }
+
+    public void msgDirty() {
+        messageDirty = true;
+    }
+
     private void Update()
     {
         if (null == Camera.main) return;
@@ -141,18 +179,18 @@ public class GMScript : NetworkBehaviour
 
         
         CheckValidGame();
-        
-        if (Input.GetKeyDown(KeyCode.Q))
-            Debug.Break();
-        else if (Input.GetKeyDown(KeyCode.LeftArrow))
-            PlayerMove(-1,0);
-        else if (Input.GetKeyDown(KeyCode.RightArrow))
-            PlayerMove(1,0);
-        else if (Input.GetKeyDown(KeyCode.UpArrow))
-            PlayerRotate();
-        else if (Input.GetKeyDown(KeyCode.DownArrow))
-            PlayerDrop();
-
+        if (!typing) {
+            if (Input.GetKeyDown(KeyCode.Q))
+                Debug.Break();
+            else if (Input.GetKeyDown(KeyCode.LeftArrow))
+                PlayerMove(-1, 0);
+            else if (Input.GetKeyDown(KeyCode.RightArrow))
+                PlayerMove(1, 0);
+            else if (Input.GetKeyDown(KeyCode.UpArrow))
+                PlayerRotate();
+            else if (Input.GetKeyDown(KeyCode.DownArrow))
+                PlayerDrop();
+        }
 
         if (!Dirty) return;
         DrawAllBoards();

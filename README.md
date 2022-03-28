@@ -1,8 +1,6 @@
-# CS576-Tetris-Sample
+# CS576-Netris+Messanger
 
-1. Clone this repo
-2. Open it in a 2021 version of Unity
-3. 2xClick TetrisScene (in Assets/Scenes)
-4. Hit run?
+I added a chatbox functionality where text can be entered.
+The text can then be sent with the "Send Msg" button.
+When typing, hit the "Typing" button to disable tetris movement inputs and quit input (useful for when messaging and not playing the game).
 
-Apologies for the mess. YMMV.
